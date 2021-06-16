@@ -1,0 +1,132 @@
+---
+title: "Neural Networks"
+author: "Xingyi Xie"
+date: "3/2021"
+output: html_document
+---
+
+## Part I - Introduction to Using Neural Nets
+
+In the attached data sets attention1.csv and attention2.csv, you will find data that describe features assocaited with webcam images of 100 students' faces as they particpate in an online discussion. The variables are:
+
+eyes - student has their eyes open (1 = yes, 0 = no)
+face.forward - student is facing the camera (1 = yes, 0 = no)
+chin.up - student's chin is raised above 45 degrees (1 = yes, 0 = no)
+squint - eyes are squinting
+hunch - shoulders are hunched over
+mouth1 - mouth is smiling
+mouth2 - mouth is frowning
+mouth3 - mouth is open
+attention - whether the student was paying attention when asked (1 = yes, 0 = no)
+
+We will use the webcam data to build a neural net to predict whether or not a student is attending.
+
+First install and load the neuralnet package
+```{r}
+library(neuralnet)
+```
+
+Now upload your data
+```{r}
+D1 <- read.csv("attention1.csv")
+  
+D2 <- read.csv("attention2.csv")
+```
+
+Now you can build a neural net that predicts attention based on webcam images. The command "neuralnet" sets up the model. It is composed of four basic arguments:
+
+- A formula that describes the inputs and outputs of the neural net (attention is our output)
+- The data frame that the model will use
+- How many nodes are in the hidden layer
+- A threshold that tells the model when to stop adjusting weights to find a better fit. If error does not change more than the threshold from one iteration to the next, the algorithm will stop (We will use 0.01, so if prediction error does not change by more than 1% from one iteration to the next the algorithm will halt)
+
+```{r}
+nn <- neuralnet(attention == 1 ~ eyes + face.forward + chin.up + squint + hunch + mouth1 + mouth2 + mouth3, D1, hidden = c(2,2), learningrate = 0.2)
+
+plot(nn)
+
+#The option "hidden" allows you to change the number of hiddden layers and number of nodes within the hidden layers c(1,1) = one hidden layer with 1 node, 0 = zero hidden layers, etc
+
+#The option "learningrate" alters the size of the steps the model takes every time it adjusts the weights.
+
+#Change the hidden layers and learningrate options and check both the prediction accuracy 
+```
+
+You have now trained a neural network! The plot shows you the layers of your newtork as black nodes and edges with the calculated weights on each edge. The blue nodes and edges are the bias/threshold terms - it is a little bit confusing that they are represented as nodes, they are not nodes in the sense that the black nodes are. The bias anchors the activation function, the weights change the shape of the activation function while the bias term changes the overall position of the activation function - if you have used linear regression the bias term is like the intercept of the regression equation, it shifts the trend line up and down the y axis, while the other parameters change the angle of the line. The plot also reports the final error rate and the number of iterations ("steps") that it took to reach these weights.
+
+What happens if you increase the number of hidden layers in the neural net? Build a second neural net with more or fewer layers in it and determine if this improves your predictions or not? How can you tell if your new neural network is doing a better job than your first?
+
+```{r}
+nn <- neuralnet(attention == 1 ~ eyes + face.forward + chin.up + squint + hunch + mouth1 + mouth2 + mouth3, D1, hidden = c(3,3), learningrate = 0.1)
+
+plot(nn)
+```
+
+Now use your preferred neural net to predict the second data set. You will need to create a new data frame (D3) that only includes the input layers to use this command.
+
+```{r}
+D3 <- subset(D2, select = -attention )
+```
+
+Now you can create predictions using your neural net
+```{r}
+#The code below will use your model to predict the outcome using D3 data
+pred <- predict(nn, D3)
+
+#The code below will tell you how accurate your model is att predicting the unseen data
+table(D2$attention == 1, pred[, 1] > 0.5)
+
+#Adjust both the hidden layer and lerarning rate and see if that has an impact on error, steps and prediction accuracy
+
+
+```
+
+## Please answer the following questions:
+
+1. How accurate is your neural net? How can you tell?
+##The accuracy rate is (34+62)/100=96%, the diagonal of the confusion matrix is the number of correct predictions, divided by the total is the accuracy rate.
+2. How would you explain your model to the students whose behavior you are predicting? 
+##Neural networks are actually multilayer logistic regression, which is easier to understand if it is a one-layer case that degenerates into logistic regression.
+3. This is a very simple example of a neural network. Real facial recognition is very complex though. Would a neural network be a good solution for predicting real facial movements? Why, why not? 
+##Features determine the correct recognition rate, as long as there are enough features, the neural network is always effective.
+
+## Repeat with your own data
+
+Either synthesize a data set or find a data set online and build a neural net to predict a binary outcome from several inputs. Split your data into two sets and use one set to train the neural net and the other set to make predictions. Change the hidden layers and learning rate until you get the most accurate model you can.
+
+```{r}
+cardio_train <- read.csv("cardio_train.csv")
+cardio_train<- subset(cardio_train, select = -id )
+library(caret)
+library(lattice)
+library(ggplot2)
+inTrain <- createDataPartition(y=cardio_train$cardio, p=0.75, list=F)
+TRAIN1<-cardio_train[inTrain,]
+TEST1<-cardio_train[-inTrain,]
+```
+```{r}
+nn <- neuralnet(cardio == 1 ~ gender + height + weight + ap_hi + ap_lo + cholesterol + gluc+smoke+alco, TRAIN1, hidden = c(2,2), learningrate = 0.01)
+
+plot(nn)
+```
+```{r}
+pred <- predict(nn, subset(TEST1, select = c(gender,height,weight,ap_hi,ap_lo,cholesterol,gluc,smoke,alco)))
+
+#The code below will tell you how accurate your model is att predicting the unseen data
+table(TEST1$cardio == 1, pred[, 1] > 0.1)
+```
+##Accuracy:(327+106)/445=97.3%
+##Adding hidden layers
+```{r}
+nn <- neuralnet(cardio == 1 ~ gender + height + weight + ap_hi + ap_lo + cholesterol + gluc+smoke+alco, TRAIN1, hidden = c(3,3), learningrate = 0.02)
+
+plot(nn)
+```
+```{r}
+pred <- predict(nn, subset(TEST1, select = c(gender,height,weight,ap_hi,ap_lo,cholesterol,gluc,smoke,alco)))
+
+#The code below will tell you how accurate your model is at predicting the unseen data
+table(TEST1$cardio == 1, pred[, 1] > 0.5)
+```
+##Accuracy(327+106)/445=97.3%
+##Increasing the number of network nodes helps to reduce the training error. But there is no change in the test data, indicating that the previous network is already a better fit to the data.
